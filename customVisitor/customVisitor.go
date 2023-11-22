@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/antlr4-go/antlr/v4"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -175,7 +176,8 @@ func (v *Visitor) VisitAssign(ctx *genAntlr.AssignContext) interface{} {
 		})
 	}
 	v.VisitExpression(ctx.GetChild(2).(*genAntlr.ExpressionContext))
-	v.ids[ctx.GetChild(0).(*genAntlr.IdContext).GetText()] = v.pop()
+	expRes := v.calculateExpression(ctx.GetChild(2).(*genAntlr.ExpressionContext).GetText())
+	v.ids[ctx.GetChild(0).(*genAntlr.IdContext).GetText()] = expRes
 	return success
 }
 
@@ -190,34 +192,26 @@ func (v *Visitor) VisitExpression(ctx *genAntlr.ExpressionContext) interface{} {
 func (v *Visitor) VisitSubexpression(ctx *genAntlr.SubexpressionContext) interface{} {
 	var lastBinaryOperator string
 
-	//bracketResult := make([]int, 0)
-	//
-	//for i, seCtx := range ctx.GetChildren() {
-	//	if lbCtx, ok := seCtx.(*antlr.TerminalNodeImpl); ok {
-	//		if lbCtx.GetText() == "(" {
-	//			v.VisitExpression(ctx.GetChild(i + 1).(*genAntlr.ExpressionContext))
-	//			result := v.pop()
-	//			bracketResult = append(bracketResult, result)
-	//		}
-	//	}
-	//}
-
 	for _, seCtx := range ctx.GetChildren() {
 		switch seCtx.(type) {
 		case *genAntlr.ExpressionContext:
 			v.VisitExpression(seCtx.(*genAntlr.ExpressionContext))
+			if len(v.stack) == 3 {
+				v.calc(lastBinaryOperator)
+			}
 		case *genAntlr.OperandContext:
 			v.VisitOperand(seCtx.(*genAntlr.OperandContext))
 		case *genAntlr.SubexpressionContext:
 			result := v.VisitSubexpression(seCtx.(*genAntlr.SubexpressionContext))
 			v.push(result.(int))
-			if len(v.stack) == 2 {
+			if len(v.stack) >= 2 {
 				v.calc(lastBinaryOperator)
 			}
 		case *genAntlr.BinaryOperatorContext:
 			lastBinaryOperator = v.VisitBinaryOperator(seCtx.(*genAntlr.BinaryOperatorContext)).(string)
 		}
 	}
+
 	return v.pop()
 }
 
@@ -239,7 +233,7 @@ func (v *Visitor) VisitOperand(ctx *genAntlr.OperandContext) interface{} {
 				Type:     errorhandler.ProgramError,
 				Line:     ctx.GetStart().GetLine(),
 				Position: ctx.GetStart().GetColumn(),
-				Message:  "переменная не определена",
+				Message:  fmt.Sprintf("переменная '%s' не определена", oCtx.(*genAntlr.IdContext).GetText()),
 			})
 		}
 		v.push(num.(int))
@@ -302,7 +296,15 @@ func (v *Visitor) VisitRead(ctx *genAntlr.ReadContext) interface{} {
 
 	for _, id := range readIds {
 		var tempNum int
-		fmt.Scanln(&tempNum)
+		fmt.Printf("%s --> ", id)
+		if _, err := fmt.Scanln(&tempNum); err != nil {
+			v.errorHandler.Error(errorhandler.CustomError{
+				Line:     ctx.GetStart().GetLine(),
+				Position: ctx.GetStart().GetColumn(),
+				Type:     errorhandler.ProgramError,
+				Message:  "ошибка при чтении данных с клавиатуры",
+			})
+		}
 		v.ids[id] = tempNum
 	}
 	return success
@@ -317,4 +319,78 @@ func (v *Visitor) VisitWrite(ctx *genAntlr.WriteContext) interface{} {
 	}
 	fmt.Println()
 	return success
+}
+
+func (v *Visitor) calculateExpression(expression string) int {
+	var operators []rune
+	var values []int
+
+	for key, value := range v.ids {
+		expression = strings.ReplaceAll(expression, key, strconv.Itoa(value))
+	}
+
+	// Функция для применения оператора
+	applyOperator := func() {
+		operator := operators[len(operators)-1]
+		operators = operators[:len(operators)-1]
+
+		right := values[len(values)-1]
+		values = values[:len(values)-1]
+
+		left := values[len(values)-1]
+		values = values[:len(values)-1]
+
+		switch operator {
+		case '+':
+			values = append(values, left+right)
+		case '-':
+			values = append(values, left-right)
+		case '*':
+			values = append(values, left*right)
+		case '/':
+			values = append(values, left/right)
+		}
+	}
+
+	// Функция для получения приоритета оператора
+	getPriority := func(operator rune) int {
+		switch operator {
+		case '+', '-':
+			return 1
+		case '*', '/':
+			return 2
+		}
+		return 0
+	}
+
+	for i := 0; i < len(expression); i++ {
+		switch {
+		case expression[i] >= '0' && expression[i] <= '9':
+			j := i
+			for j < len(expression) && (expression[j] >= '0' && expression[j] <= '9' || expression[j] == '.') {
+				j++
+			}
+			num, _ := strconv.Atoi(expression[i:j])
+			values = append(values, num)
+			i = j - 1
+		case expression[i] == '+' || expression[i] == '-' || expression[i] == '*' || expression[i] == '/':
+			for len(operators) > 0 && getPriority(operators[len(operators)-1]) >= getPriority(rune(expression[i])) {
+				applyOperator()
+			}
+			operators = append(operators, rune(expression[i]))
+		case expression[i] == '(':
+			operators = append(operators, '(')
+		case expression[i] == ')':
+			for operators[len(operators)-1] != '(' {
+				applyOperator()
+			}
+			operators = operators[:len(operators)-1]
+		}
+	}
+
+	for len(operators) > 0 {
+		applyOperator()
+	}
+
+	return values[0]
 }
