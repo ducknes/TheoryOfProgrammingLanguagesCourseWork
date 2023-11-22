@@ -23,17 +23,22 @@ type CustomErrorHandler struct {
 	errors []CustomError
 }
 
-func (d *CustomErrorHandler) SyntaxError(_ antlr.Recognizer, _ interface{}, _, _ int, _ string, _ antlr.RecognitionException) {
-	os.Exit(1)
+func (ceh *CustomErrorHandler) SyntaxError(_ antlr.Recognizer, _ interface{}, line, pos int, msg string, _ antlr.RecognitionException) {
+	ceh.Error(CustomError{
+		Line:     line,
+		Position: pos,
+		Type:     ProgramError,
+		Message:  msg,
+	})
 }
 
-func (d *CustomErrorHandler) ReportAmbiguity(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ bool, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
+func (ceh *CustomErrorHandler) ReportAmbiguity(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ bool, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
 }
 
-func (d *CustomErrorHandler) ReportAttemptingFullContext(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
+func (ceh *CustomErrorHandler) ReportAttemptingFullContext(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
 }
 
-func (d *CustomErrorHandler) ReportContextSensitivity(_ antlr.Parser, _ *antlr.DFA, _, _, _ int, _ *antlr.ATNConfigSet) {
+func (ceh *CustomErrorHandler) ReportContextSensitivity(_ antlr.Parser, _ *antlr.DFA, _, _, _ int, _ *antlr.ATNConfigSet) {
 }
 
 func New() *CustomErrorHandler {
