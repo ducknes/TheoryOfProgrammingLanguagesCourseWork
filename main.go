@@ -20,6 +20,7 @@ func main() {
 	lexer := genAntlr.NewcourseWorkGrammarLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
 	parser := genAntlr.NewcourseWorkGrammarParser(stream)
+	parser.AddErrorListener(customErrorHandler)
 	tree := parser.Program()
 
 	visitor.Visit(tree)

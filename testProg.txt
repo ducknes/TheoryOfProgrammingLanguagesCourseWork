@@ -1,8 +1,8 @@
-VAR a, b: INTEGER;
+VAR a, b, c: INTEGER;
 BEGIN
     a = 1;
     b = a + 2;
-    c = a + b + 3;
+    c = (a + b) + 3;
     FOR a = 0; TO 3 DO
         WRITE(b)
     END_FOR

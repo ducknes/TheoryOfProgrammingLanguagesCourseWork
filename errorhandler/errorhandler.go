@@ -19,8 +19,21 @@ type CustomError struct {
 }
 
 type CustomErrorHandler struct {
-	errorListener *antlr.DefaultErrorListener
-	errors        []CustomError
+	*antlr.DefaultErrorListener
+	errors []CustomError
+}
+
+func (d *CustomErrorHandler) SyntaxError(_ antlr.Recognizer, _ interface{}, _, _ int, _ string, _ antlr.RecognitionException) {
+	os.Exit(1)
+}
+
+func (d *CustomErrorHandler) ReportAmbiguity(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ bool, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
+}
+
+func (d *CustomErrorHandler) ReportAttemptingFullContext(_ antlr.Parser, _ *antlr.DFA, _, _ int, _ *antlr.BitSet, _ *antlr.ATNConfigSet) {
+}
+
+func (d *CustomErrorHandler) ReportContextSensitivity(_ antlr.Parser, _ *antlr.DFA, _, _, _ int, _ *antlr.ATNConfigSet) {
 }
 
 func New() *CustomErrorHandler {

@@ -189,6 +189,19 @@ func (v *Visitor) VisitExpression(ctx *genAntlr.ExpressionContext) interface{} {
 
 func (v *Visitor) VisitSubexpression(ctx *genAntlr.SubexpressionContext) interface{} {
 	var lastBinaryOperator string
+
+	//bracketResult := make([]int, 0)
+	//
+	//for i, seCtx := range ctx.GetChildren() {
+	//	if lbCtx, ok := seCtx.(*antlr.TerminalNodeImpl); ok {
+	//		if lbCtx.GetText() == "(" {
+	//			v.VisitExpression(ctx.GetChild(i + 1).(*genAntlr.ExpressionContext))
+	//			result := v.pop()
+	//			bracketResult = append(bracketResult, result)
+	//		}
+	//	}
+	//}
+
 	for _, seCtx := range ctx.GetChildren() {
 		switch seCtx.(type) {
 		case *genAntlr.ExpressionContext:
