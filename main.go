@@ -12,9 +12,18 @@ import (
 var program string
 
 func main() {
+
 	customErrorHandler := errorhandler.New()
 
 	visitor := customVisitor.New(customErrorHandler)
+
+	sim := program[len(program)-1]
+
+	if sim != ';' {
+		customErrorHandler.Error(errorhandler.CustomError{
+			Message: "лишние символы после конца программы или нет ;",
+		})
+	}
 
 	is := antlr.NewInputStream(program)
 	lexer := genAntlr.NewcourseWorkGrammarLexer(is)

@@ -14,6 +14,11 @@ const (
 	fail    = false
 )
 
+type Exp struct {
+	znar rune
+	typ  int
+}
+
 type Visitor struct {
 	genAntlr.BasecourseWorkGrammarVisitor
 	errorHandler *errorhandler.CustomErrorHandler
@@ -111,6 +116,16 @@ func (v *Visitor) VisitProgram(ctx *genAntlr.ProgramContext) interface{} {
 }
 
 func (v *Visitor) VisitProgDeclare(ctx *genAntlr.ProgDeclareContext) interface{} {
+	prog := ctx.GetText()
+	sim := string(rune(prog[len(prog)-1]))
+	if sim != ";" {
+		v.errorHandler.Error(errorhandler.CustomError{
+			Line:     ctx.GetStart().GetLine(),
+			Position: ctx.GetStart().GetColumn(),
+			Type:     errorhandler.ProgramError,
+			Message:  "много",
+		})
+	}
 	return v.VisitProgramDescription(ctx.GetChild(1).(*genAntlr.ProgramDescriptionContext))
 }
 
@@ -184,8 +199,9 @@ func (v *Visitor) VisitAssign(ctx *genAntlr.AssignContext) interface{} {
 func (v *Visitor) VisitExpression(ctx *genAntlr.ExpressionContext) interface{} {
 	if _, ok := ctx.GetChild(0).(*genAntlr.UnaryOperatorContext); ok {
 		v.push(-v.VisitSubexpression(ctx.GetChild(1).(*genAntlr.SubexpressionContext)).(int))
+	} else {
+		v.push(v.VisitSubexpression(ctx.GetChild(0).(*genAntlr.SubexpressionContext)).(int))
 	}
-	v.push(v.VisitSubexpression(ctx.GetChild(0).(*genAntlr.SubexpressionContext)).(int))
 	return success
 }
 
@@ -278,6 +294,7 @@ func (v *Visitor) VisitLoop(ctx *genAntlr.LoopContext) interface{} {
 	loopToValue := v.pop()
 
 	for i := loopIdValue; i < loopToValue; i++ {
+		v.ids[loopId] = i
 		v.VisitProgramDescription(ctx.GetChild(5).(*genAntlr.ProgramDescriptionContext))
 	}
 
@@ -322,7 +339,7 @@ func (v *Visitor) VisitWrite(ctx *genAntlr.WriteContext) interface{} {
 }
 
 func (v *Visitor) calculateExpression(expression string) int {
-	var operators []rune
+	var operators []Exp
 	var values []int
 
 	for key, value := range v.ids {
@@ -337,10 +354,20 @@ func (v *Visitor) calculateExpression(expression string) int {
 		right := values[len(values)-1]
 		values = values[:len(values)-1]
 
-		left := values[len(values)-1]
-		values = values[:len(values)-1]
+		if operator.typ == 1 {
+			values = append(values, -right)
+			return
+		}
 
-		switch operator {
+		var left int
+		if len(values) == 0 {
+			left = 0
+		} else {
+			left = values[len(values)-1]
+			values = values[:len(values)-1]
+		}
+
+		switch operator.znar {
 		case '+':
 			values = append(values, left+right)
 		case '-':
@@ -374,14 +401,38 @@ func (v *Visitor) calculateExpression(expression string) int {
 			values = append(values, num)
 			i = j - 1
 		case expression[i] == '+' || expression[i] == '-' || expression[i] == '*' || expression[i] == '/':
-			for len(operators) > 0 && getPriority(operators[len(operators)-1]) >= getPriority(rune(expression[i])) {
+			for len(operators) > 0 && getPriority(operators[len(operators)-1].znar) >= getPriority(rune(expression[i])) {
 				applyOperator()
 			}
-			operators = append(operators, rune(expression[i]))
+
+			if i == 0 && expression[i] == '-' && ((expression[i+1] >= '0' && expression[i+1] <= '9') || expression[i+1] <= '(') {
+				operators = append(operators, Exp{
+					znar: rune(expression[i]),
+					typ:  1,
+				})
+				continue
+			}
+
+			va := string(rune(expression[i-1]))
+
+			if checkOp(va) && expression[i+1] >= '0' && expression[i+1] <= '9' {
+				operators = append(operators, Exp{
+					znar: rune(expression[i]),
+					typ:  1,
+				})
+				continue
+			}
+			operators = append(operators, Exp{
+				znar: rune(expression[i]),
+				typ:  0,
+			})
 		case expression[i] == '(':
-			operators = append(operators, '(')
+			operators = append(operators, Exp{
+				znar: '(',
+				typ:  0,
+			})
 		case expression[i] == ')':
-			for operators[len(operators)-1] != '(' {
+			for operators[len(operators)-1].znar != '(' {
 				applyOperator()
 			}
 			operators = operators[:len(operators)-1]
@@ -393,4 +444,14 @@ func (v *Visitor) calculateExpression(expression string) int {
 	}
 
 	return values[0]
+}
+
+func checkOp(op string) bool {
+	ops := []string{"+", "-", "*", "("}
+	for _, value := range ops {
+		if value == op {
+			return true
+		}
+	}
+	return false
 }

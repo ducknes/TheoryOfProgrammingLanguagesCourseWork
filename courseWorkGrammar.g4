@@ -4,7 +4,7 @@ grammar courseWorkGrammar;
 program: varDeclare progDeclare;
 
 //Описание программы 1
-progDeclare: BEGIN programDescription END;
+progDeclare: BEGIN programDescription END ';' ;
 
 //Объявление переменных 2
 varDeclare: VAR varList COLON INT SEMICOLON ;

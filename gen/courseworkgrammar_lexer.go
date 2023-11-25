@@ -1,4 +1,4 @@
-// Code generated from /Users/ilyaantonov/Downloads/3 курс/ТЯП/cwp/courseWorkGrammar.g4 by ANTLR 4.13.1. DO NOT EDIT.
+// Code generated from /Users/ilyaantonov/Downloads/TheoryOfProgrammingLanguagesCourseWork-test/courseWorkGrammar.g4 by ANTLR 4.13.1. DO NOT EDIT.
 
 package parser
 
